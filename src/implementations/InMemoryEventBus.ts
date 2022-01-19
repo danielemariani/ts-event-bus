@@ -1,10 +1,20 @@
 import { uid } from 'uid/single';
 
-import { DispatchedEvent, DispatchRequest, EventsDeclarations, EventTypes, ListenerId, ListenRequest, EventBus, EventListener, RegisteredListeners } from '../EventBus';
+import { DispatchedEvent, DispatchRequest, EventsDeclarations, EventTypes, ListenerId, ListenRequest, EventBus, RegisteredListeners } from '../EventBus';
+
+export type EventBusOptions<Declarations extends EventsDeclarations> = {
+  onEventDispatched: (d: { event: DispatchedEvent<Declarations, EventTypes<Declarations>>, listeners: Array<ListenerId> }) => void;
+  onListenerRegistered: (d: { event: EventTypes<Declarations>, listenerId: ListenerId }) => void;
+};
 
 class InMemoryEventBus<Declarations extends EventsDeclarations> implements EventBus<Declarations> {
-  private events: Array<DispatchedEvent<Declarations, EventTypes<Declarations>>> = [];
-  private listeners: RegisteredListeners<Declarations> = {} as RegisteredListeners<Declarations>;
+  private readonly options?: EventBusOptions<Declarations>;
+  private readonly events: Array<DispatchedEvent<Declarations, EventTypes<Declarations>>> = [];
+  private readonly listeners: RegisteredListeners<Declarations> = {} as RegisteredListeners<Declarations>;
+
+  constructor(options?: EventBusOptions<Declarations>) {
+    this.options = options;
+  }
 
   dispatch<T extends EventTypes<Declarations>>(request: DispatchRequest<Declarations, T>): void {
     const dispatchedEvent: DispatchedEvent<Declarations, T> = { ...request.event, timestamp: Date.now().toString() };
@@ -13,6 +23,8 @@ class InMemoryEventBus<Declarations extends EventsDeclarations> implements Event
     this.events.push(dispatchedEvent);
 
     listeners.forEach(l => new Promise(() => l.listener(dispatchedEvent)).catch(() => {}));
+
+    this.options?.onEventDispatched({ event: dispatchedEvent, listeners: listeners.map(l => l.id) });
   }
 
   registerToEvent<T extends EventTypes<Declarations>>(request: ListenRequest<Declarations, T>): ListenerId {
@@ -29,6 +41,8 @@ class InMemoryEventBus<Declarations extends EventsDeclarations> implements Event
         .forEach((e: DispatchedEvent<Declarations, T>) => this.dispatchAndCatchExceptions(request, e));
     }
 
+    this.options?.onListenerRegistered({ event: request.event, listenerId: listenerId });
+
     return listenerId;
   }
 
@@ -43,6 +57,6 @@ class InMemoryEventBus<Declarations extends EventsDeclarations> implements Event
   }
 }
 
-export const createInMemoryEventBus = <Declarations extends EventsDeclarations>() => {
-  return new InMemoryEventBus<Declarations>();
+export const createInMemoryEventBus = <Declarations extends EventsDeclarations>(options?: EventBusOptions<Declarations>) => {
+  return new InMemoryEventBus<Declarations>(options);
 };

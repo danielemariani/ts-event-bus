@@ -1,7 +1,7 @@
 import * as td from 'testdouble';
 
-import { createInMemoryEventBus } from './InMemoryEventBus';
-import { EventListener, EventTypes, EventBus } from '../EventBus';
+import { createInMemoryEventBus, EventBusOptions } from './InMemoryEventBus';
+import { EventListener, EventTypes, EventBus, ListenerId, DispatchedEvent } from '../EventBus';
 
 describe('InMemoryEventBus', () => {
 
@@ -10,6 +10,9 @@ describe('InMemoryEventBus', () => {
     'test-event-2': string;
     'test-event-3': { aProp: number };
   };
+
+  type TestEventTypes = EventTypes<TestDeclarations>;
+  type TestDispatchedEvent = DispatchedEvent<TestDeclarations, TestEventTypes>;
 
   it('dispatches event to registered listener with no payload', () => {
     const eventBus = createTestBus();
@@ -129,11 +132,41 @@ describe('InMemoryEventBus', () => {
     td.verify(listener({ type: 'test-event-2', payload: 'FOURTH', timestamp: td.matchers.isA(String) }), { times: 1 });
   });
 
-  function createTestBus(): EventBus<TestDeclarations> {
-    return createInMemoryEventBus<TestDeclarations>();
+  it('supports hooks on events dispatch and listener registration', () => {
+    const onListenerRegistered = td.function<(d: { event: TestEventTypes, listenerId: ListenerId }) => void>();
+    const onEventDispatched = td.function<(d: { event: TestDispatchedEvent, listeners: Array<ListenerId> }) => void>();
+
+    const eventBus = createTestBus({
+      onListenerRegistered: onListenerRegistered,
+      onEventDispatched: onEventDispatched,
+    });
+
+    const listener1 = createTestListener<'test-event-2'>();
+    const listener2 = createTestListener<'test-event-2'>();
+
+    const listenerId1 = eventBus.registerToEvent({ event: 'test-event-2', listener: listener1 });
+    const listenerId2 = eventBus.registerToEvent({ event: 'test-event-2', listener: listener2 });
+
+    td.verify(onListenerRegistered({ event: 'test-event-2', listenerId: listenerId1 }), { times: 1 });
+    td.verify(onListenerRegistered({ event: 'test-event-2', listenerId: listenerId2 }), { times: 1 });
+
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'FIRST' } });
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'SECOND' } });
+
+    td.verify(
+      onEventDispatched({
+        event: { type: 'test-event-2', payload: 'FIRST', timestamp: td.matchers.isA(String) },
+        listeners: [listenerId1, listenerId2],
+      }),
+      { times: 1 },
+    );
+  });
+
+  function createTestBus(options?: EventBusOptions<TestDeclarations>): EventBus<TestDeclarations> {
+    return createInMemoryEventBus<TestDeclarations>(options);
   }
 
-  function createTestListener<Type extends EventTypes<TestDeclarations>>(): EventListener<TestDeclarations, Type> {
+  function createTestListener<Type extends TestEventTypes>(): EventListener<TestDeclarations, Type> {
     return td.function<EventListener<TestDeclarations, Type>>();
   }
 
