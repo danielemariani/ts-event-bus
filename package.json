@@ -4,7 +4,7 @@
   "description": "A typed event bus implementation in TS",
   "main": "build/index.ts",
   "scripts": {
-    "test": "node_modules/.bin/jest",
+    "test": "node_modules/.bin/jest --watch-all",
     "build": "tsc",
     "watch": "tsc -w"
   },

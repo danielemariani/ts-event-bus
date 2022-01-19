@@ -111,6 +111,24 @@ describe('InMemoryEventBus', () => {
     td.verify(listener({ type: 'test-event-2', payload: 'FOURTH', timestamp: td.matchers.isA(String) }), { times: 1 });
   });
 
+  it('when requested, dispatches all previous events to a listener after registering', () => {
+    const eventBus = createTestBus();
+    const listener = createTestListener<'test-event-2'>();
+
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'FIRST' } });
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'SECOND' } });
+
+    eventBus.registerToEvent({ event: 'test-event-2', listener: listener, options: { recoverPreviousEvents: true } });
+
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'THIRD' } });
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'FOURTH' } });
+
+    td.verify(listener({ type: 'test-event-2', payload: 'FIRST', timestamp: td.matchers.isA(String) }), { times: 1 });
+    td.verify(listener({ type: 'test-event-2', payload: 'SECOND', timestamp: td.matchers.isA(String) }), { times: 1 });
+    td.verify(listener({ type: 'test-event-2', payload: 'THIRD', timestamp: td.matchers.isA(String) }), { times: 1 });
+    td.verify(listener({ type: 'test-event-2', payload: 'FOURTH', timestamp: td.matchers.isA(String) }), { times: 1 });
+  });
+
   function createTestBus(): EventBus<TestDeclarations> {
     return createInMemoryEventBus<TestDeclarations>();
   }

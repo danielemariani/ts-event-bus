@@ -1,6 +1,6 @@
 import { uid } from 'uid/single';
 
-import { DispatchedEvent, DispatchRequest, EventsDeclarations, EventTypes, ListenerId, ListenRequest, EventBus, RegisteredListeners } from '../EventBus';
+import { DispatchedEvent, DispatchRequest, EventsDeclarations, EventTypes, ListenerId, ListenRequest, EventBus, EventListener, RegisteredListeners } from '../EventBus';
 
 class InMemoryEventBus<Declarations extends EventsDeclarations> implements EventBus<Declarations> {
   private events: Array<DispatchedEvent<Declarations, EventTypes<Declarations>>> = [];
@@ -24,7 +24,16 @@ class InMemoryEventBus<Declarations extends EventsDeclarations> implements Event
 
     this.listeners[request.event].push({ id: listenerId, listener: request.listener });
 
+    if (request.options && request.options.recoverPreviousEvents) {
+      this.events.filter(e => e.type === request.event)
+        .forEach((e: DispatchedEvent<Declarations, T>) => this.dispatchAndCatchExceptions(request, e));
+    }
+
     return listenerId;
+  }
+
+  private dispatchAndCatchExceptions<T extends EventTypes<Declarations>>(request: ListenRequest<Declarations, T>, e: DispatchedEvent<Declarations, T>) {
+    return new Promise(() => request.listener(e)).catch(() => {});
   }
 
   unregisterListener<T extends EventTypes<Declarations>>(listenerId: ListenerId): void {

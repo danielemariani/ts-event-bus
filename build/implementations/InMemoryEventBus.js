@@ -19,7 +19,14 @@ class InMemoryEventBus {
         }
         const listenerId = (0, single_1.uid)();
         this.listeners[request.event].push({ id: listenerId, listener: request.listener });
+        if (request.options && request.options.recoverPreviousEvents) {
+            this.events.filter(e => e.type === request.event)
+                .forEach((e) => this.dispatchAndCatchExceptions(request, e));
+        }
         return listenerId;
+    }
+    dispatchAndCatchExceptions(request, e) {
+        return new Promise(() => request.listener(e)).catch(() => { });
     }
     unregisterListener(listenerId) {
         Object.keys(this.listeners).forEach((key) => {

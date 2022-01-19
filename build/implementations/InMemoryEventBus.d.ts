@@ -4,6 +4,7 @@ declare class InMemoryEventBus<Declarations extends EventsDeclarations> implemen
     private listeners;
     dispatch<T extends EventTypes<Declarations>>(request: DispatchRequest<Declarations, T>): void;
     registerToEvent<T extends EventTypes<Declarations>>(request: ListenRequest<Declarations, T>): ListenerId;
+    private dispatchAndCatchExceptions;
     unregisterListener<T extends EventTypes<Declarations>>(listenerId: ListenerId): void;
 }
 export declare const createInMemoryEventBus: <Declarations extends EventsDeclarations>() => InMemoryEventBus<Declarations>;

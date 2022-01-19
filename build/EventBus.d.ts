@@ -23,6 +23,9 @@ export declare type DispatchRequest<Declarations extends EventsDeclarations, Typ
 export declare type ListenRequest<Declarations extends EventsDeclarations, Types extends EventTypes<Declarations>> = {
     event: Types;
     listener: EventListener<Declarations, Types>;
+    options?: {
+        recoverPreviousEvents?: boolean;
+    };
 };
 export interface EventBus<Declarations extends EventsDeclarations> {
     dispatch<T extends EventTypes<Declarations>>(request: DispatchRequest<Declarations, T>): void;
