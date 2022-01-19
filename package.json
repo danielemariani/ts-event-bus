@@ -2,7 +2,8 @@
   "name": "@danielemariani/ts-event-bus",
   "version": "1.0.0",
   "description": "A typed event bus implementation in TS",
-  "main": "build/index.ts",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
   "scripts": {
     "test": "node_modules/.bin/jest --watch-all",
     "build": "tsc",
