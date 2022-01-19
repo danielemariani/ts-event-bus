@@ -1,6 +1,6 @@
 {
   "name": "@danielemariani/ts-event-bus",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A typed event bus implementation in TS",
   "main": "build/index.js",
   "types": "build/index.d.ts",
