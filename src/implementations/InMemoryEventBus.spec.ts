@@ -132,6 +132,37 @@ describe('InMemoryEventBus', () => {
     td.verify(listener({ type: 'test-event-2', payload: 'FOURTH', timestamp: td.matchers.isA(String) }), { times: 1 });
   });
 
+  it('allows to configure events storing in memory for specific events', () => {
+    const eventBus = createTestBus({
+      eventsConfiguration: {
+        'test-event-2': { disableStore: true }
+      },
+    });
+    const listener1 = createTestListener<'test-event-1'>();
+    const listener2 = createTestListener<'test-event-2'>();
+
+    eventBus.dispatch({ event: { type: 'test-event-1', payload: undefined } });
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'DATA' } });
+
+    eventBus.registerToEvent({
+      event: 'test-event-1',
+      listener: listener1,
+      options: { recoverPreviousEvents: true }
+    });
+
+    eventBus.registerToEvent({
+      event: 'test-event-2',
+      listener: listener2,
+      options: { recoverPreviousEvents: true }
+    });
+
+    eventBus.dispatch({ event: { type: 'test-event-1', payload: undefined } });
+    eventBus.dispatch({ event: { type: 'test-event-2', payload: 'DATA' } });
+
+    td.verify(listener1({ type: 'test-event-1', payload: undefined, timestamp: td.matchers.isA(String) }), { times: 2 });
+    td.verify(listener2({ type: 'test-event-2', payload: 'DATA', timestamp: td.matchers.isA(String) }), { times: 1 });
+  });
+
   it('supports hooks on events dispatch and listener registration', () => {
     const onListenerRegistered = td.function<(d: { event: TestEventTypes, listenerId: ListenerId }) => void>();
     const onEventDispatched = td.function<(d: { event: TestDispatchedEvent, listeners: Array<ListenerId> }) => void>();

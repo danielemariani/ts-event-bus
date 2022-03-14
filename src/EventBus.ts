@@ -27,6 +27,7 @@ export type RegisteredListeners<Declarations extends EventsDeclarations> = Recor
 
 export type DispatchRequest<Declarations extends EventsDeclarations, Types extends EventTypes<Declarations>> = {
   event: EventToDispatch<Declarations, Types>;
+  options?: { recordEvent?: boolean; };
 };
 
 export type ListenRequest<Declarations extends EventsDeclarations, Types extends EventTypes<Declarations>> = {

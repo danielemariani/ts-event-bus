@@ -3,8 +3,9 @@ import { uid } from 'uid/single';
 import { DispatchedEvent, DispatchRequest, EventsDeclarations, EventTypes, ListenerId, ListenRequest, EventBus, RegisteredListeners } from '../EventBus';
 
 export type EventBusOptions<Declarations extends EventsDeclarations> = {
-  onEventDispatched: (d: { event: DispatchedEvent<Declarations, EventTypes<Declarations>>, listeners: Array<ListenerId> }) => void;
-  onListenerRegistered: (d: { event: EventTypes<Declarations>, listenerId: ListenerId }) => void;
+  eventsConfiguration?: { [Key in keyof Declarations]?: { disableStore?: boolean; } };
+  onEventDispatched?: (d: { event: DispatchedEvent<Declarations, EventTypes<Declarations>>, listeners: Array<ListenerId> }) => void;
+  onListenerRegistered?: (d: { event: EventTypes<Declarations>, listenerId: ListenerId }) => void;
 };
 
 class InMemoryEventBus<Declarations extends EventsDeclarations> implements EventBus<Declarations> {
@@ -20,11 +21,14 @@ class InMemoryEventBus<Declarations extends EventsDeclarations> implements Event
     const dispatchedEvent: DispatchedEvent<Declarations, T> = { ...request.event, timestamp: Date.now().toString() };
     const listeners = this.listeners[request.event.type] || [];
 
-    this.events.push(dispatchedEvent);
+    if (this.shouldStoreEvent(request.event.type)) {
+      this.events.push(dispatchedEvent);
+    }
 
     listeners.forEach(l => new Promise(() => l.listener(dispatchedEvent)).catch(() => {}));
 
-    this.options?.onEventDispatched({ event: dispatchedEvent, listeners: listeners.map(l => l.id) });
+    if (this.options && this.options.onEventDispatched)
+      this.options.onEventDispatched({ event: dispatchedEvent, listeners: listeners.map(l => l.id) });
   }
 
   registerToEvent<T extends EventTypes<Declarations>>(request: ListenRequest<Declarations, T>): ListenerId {
@@ -41,19 +45,24 @@ class InMemoryEventBus<Declarations extends EventsDeclarations> implements Event
         .forEach((e: DispatchedEvent<Declarations, T>) => this.dispatchAndCatchExceptions(request, e));
     }
 
-    this.options?.onListenerRegistered({ event: request.event, listenerId: listenerId });
+    if (this.options && this.options.onListenerRegistered)
+      this.options.onListenerRegistered({ event: request.event, listenerId: listenerId });
 
     return listenerId;
-  }
-
-  private dispatchAndCatchExceptions<T extends EventTypes<Declarations>>(request: ListenRequest<Declarations, T>, e: DispatchedEvent<Declarations, T>) {
-    return new Promise(() => request.listener(e)).catch(() => {});
   }
 
   unregisterListener<T extends EventTypes<Declarations>>(listenerId: ListenerId): void {
     Object.keys(this.listeners).forEach((key: EventTypes<Declarations>) => {
       this.listeners[key] = this.listeners[key].filter(entry => entry.id !== listenerId);
     })
+  }
+
+  private shouldStoreEvent(eventType: keyof Declarations): boolean {
+    return !(this.options && this.options.eventsConfiguration && this.options.eventsConfiguration[eventType]?.disableStore);
+  }
+
+  private dispatchAndCatchExceptions<T extends EventTypes<Declarations>>(request: ListenRequest<Declarations, T>, e: DispatchedEvent<Declarations, T>) {
+    return new Promise(() => request.listener(e)).catch(() => {});
   }
 }
 
